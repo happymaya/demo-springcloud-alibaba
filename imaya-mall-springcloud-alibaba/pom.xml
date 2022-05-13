@@ -11,6 +11,7 @@
     <modules>
         <module>imaya-mall-common</module>
         <module>imaya-mall-mvc-config</module>
+        <module>imaya-mall-alibaba-nacos-client</module>
     </modules>
 
     <parent>

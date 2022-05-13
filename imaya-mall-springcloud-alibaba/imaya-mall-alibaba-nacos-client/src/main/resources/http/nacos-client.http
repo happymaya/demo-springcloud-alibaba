@@ -1,0 +1,5 @@
+### 查询服务实例信息
+GET http://127.0.0.1:8000/imaya-mall-alibaba-nacos-client/nacos-client/service-instance
+Accept: application/json
+
+### {"code":0,"message":"","data":[{"serviceId":"imaya-mall-alibaba-nacos-client","host":"192.168.37.1","port":8000,"secure":false,"metadata":{"nacos.instanceId":"192.168.37.1#8000#DEFAULT#DEFAULT_GROUP@@imaya-mall-alibaba-nacos-client","nacos.weight":"1.0","nacos.cluster":"DEFAULT","nacos.ephemeral":"true","nacos.healthy":"true","preserved.register.source":"SPRING_CLOUD"},"uri":"http://192.168.37.1:8000","instanceId":null,"scheme":null}]}
