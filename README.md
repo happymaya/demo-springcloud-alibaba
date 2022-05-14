@@ -181,3 +181,143 @@ vim nacos-8868/conf/application.properties
 #### Alibaba Nacos Client 的服务注册
 
 ![](./illustration/alibaba-nacos-discovery.png)
+
+
+## SpringBoot Admin 监控服务器
+
+### SpringBoot Actuator
+
+#### Actuator Endpoinuts (端点)
+
+- Endpoints 是 Actuator 的核心部分，用来监视应用程序以及交互；SpringBoot Actuator 内置了很多 Endpoints, 并支持扩展
+- SpringBoot Actuator 提供的原生端点有三类：
+  - 应用配置类（一般）：自动配置信息、Spring Bean 信息、yml 文件信息、环境信息等等
+  - 度量指标类（最常使用的）：主要是运行期间的动态信息，例如堆栈、监控指标、metrics 信息等等
+  - 操作控制类（很少使用）：主要是指 shutdown，用户可以发送一个请求将应用的监控功能关闭
+
+由于原生的 Actuator 的端点（HTTP 接口，都是 RESTful 类型），返回的都是 JSON 格式数据，因此需要自己实现对 JSON 数据的解析与观察，非常的耗时和麻烦。因此 SpringBoot Admin 就出现了 ！！！
+
+SpringBoot Admin 基于调用 Actuator 端点并使用 Vue 呈现这些端点的监控数据 ，以可视化的图形、文字效果实时呈现应用的监控状态 ！！！
+
+
+### 搭建 SpringBoot Admin 监控服务器
+
+1. 添加 SpringBoot Admin Starter 自动配置依赖
+   ```xml
+    <!-- SpringBoot Admin -->
+    <!-- 实现对 SpringBoot Admin Server 的自动配置 -->
+    <!--
+        包含：
+            1. spring-boot-admin-server : Server 端
+            2. spring-boot-admin-server-ui : UI 界面
+            2. spring-boot-admin-server-cloud : 对 Spring Cloud 的接入
+    -->
+    <dependency>
+        <groupId>de.codecentric</groupId>
+        <artifactId>spring-boot-admin-starter-server</artifactId>
+        <version>2.2.0</version>
+    </dependency>
+   ```
+2. 添加启动注解：`@EnableAdminServer`
+
+### 应用注册到 SpringBoot Admin Server
+ 
+被监控和管理的应用（微服务），注册到 Admin Server 的两种方式：
+- 方式一：被监控和管理的应用程序，使用 SpringBoot Admin Client 库，通过 HTTP 调用注册到 SpringBoot Admin Server 上（只有纯 SpringBoot 应用才会使用，微服务架构下基本上不适用，麻烦且没有必要）
+- 方式二：首先，被监控和管理的应用程序，注册到 SpringCloud 集成的注册中心；然后 SpringBoot Admin Server 通过注册中心获取到被监控和管理的应用程序
+
+具体步骤：
+1. 添加 SpringBoot Actuator 依赖
+   ```xml
+   <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+   </dependency>
+   ```
+2. 暴露 SpringBoot Actuator Endpoints
+   ```yaml
+    # 暴露端点
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: '*'  # 需要开放的端点。默认值只打开 health 和 info 两个端点。通过设置 *, 可以开放所有端点
+      endpoint:
+        health:
+          show-details: always
+   ```
+3. 指定 actuator 端点的访问路径
+   ```yaml
+    metadata:
+      management:
+        context-path: ${server.servlet.context-path}/actuator
+   ```
+
+### 自定义监控告警
+
+1. 邮件
+   1. 引入依赖
+   ```xml
+           <!-- 实现对 Java Mail 的自动化配置 -->
+<!--        <dependency>-->
+<!--            <groupId>org.springframework.boot</groupId>-->
+<!--            <artifactId>spring-boot-starter-mail</artifactId>-->
+<!--        </dependency>-->
+   ```
+   2. 配置
+   ```yaml
+      # 被监控的应用状态变更为 DOWN、OFFLINE、UNKNOWN 时, 会自动发出告警: 实例的状态、原因、实例地址等信息
+      # 需要在 pom.xml 文件中添加 spring-boot-starter-mail 依赖
+      # 配置发送告警的邮箱服务器
+      # 但是, 这个要能连接上, 否则会报错
+      #  mail:
+      #    host: qinyi.imooc.com
+      #    username: qinyi@imooc.com
+      #    password: QinyiZhang
+      #    default-encoding: UTF-8
+      # 监控告警通知
+      #  boot:
+      #    admin:
+      #      notify:
+      #        mail:
+      #          from: ${spring.mail.username}
+      #          to: qinyi@imooc.com
+      #          cc: qinyi@imooc.com
+
+   ```
+2. 自定义通知
+   ```java
+   /**
+    * <h1>自定义告警</h1>
+    * */
+    @Slf4j
+    @Component
+    @SuppressWarnings("all")
+    public class ImayaMallNotifier extends AbstractEventNotifier {
+
+        protected ImayaMallNotifier(InstanceRepository repository) {
+            super(repository);
+        }
+
+        /**
+        * <h2>实现对事件的通知</h2>
+        * */
+        @Override
+        protected Mono<Void> doNotify(InstanceEvent event, Instance instance) {
+            return Mono.fromRunnable(() -> {
+                if (event instanceof InstanceStatusChangedEvent) {
+                  // 在这里可以实现，任何的通知，比如钉钉、短信...等等
+                    log.info("Instance Status Change: [{}], [{}], [{}]",
+                            instance.getRegistration().getName(), event.getInstance(),
+                            ((InstanceStatusChangedEvent) event).getStatusInfo().getStatus());
+                } else {
+                    log.info("Instance Info: [{}], [{}], [{}]",
+                            instance.getRegistration().getName(), event.getInstance(),
+                            event.getType());
+                }
+
+            });
+        }
+    }
+   ```
+   > AbstractEventNotifier 是一个抽象的 ”通知类“，主要发挥作用的是 doNotify 方法，其实就是 SprinBootAdmin 去扫描你定义的这一类 Bean，然后注册每一个 doNotify，根据你的定义逻辑发送消息。这部分功能其实会用、知道怎么用就行，不用花很多时间在这上面。实际的工作也是，主要是搞清楚的业务思想和架构设计。
