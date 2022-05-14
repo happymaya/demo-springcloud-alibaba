@@ -321,3 +321,48 @@ SpringBoot Admin 基于调用 Actuator 端点并使用 Vue 呈现这些端点的
     }
    ```
    > AbstractEventNotifier 是一个抽象的 ”通知类“，主要发挥作用的是 doNotify 方法，其实就是 SprinBootAdmin 去扫描你定义的这一类 Bean，然后注册每一个 doNotify，根据你的定义逻辑发送消息。这部分功能其实会用、知道怎么用就行，不用花很多时间在这上面。实际的工作也是，主要是搞清楚的业务思想和架构设计。
+
+
+   ## 授权、鉴权中心微服务功能设计
+
+   ### JWT
+
+   - JSON Web Token(JWT) 是一个开放标准，定义了一种紧凑的、自包含的方式，用于作为 JSON 对象在各方之间安全地传输信息
+   - 使用场景: 用户会话状态保持、用户授权、少量的信息交互（加密数据）
+
+  ### JWT 的结构以及含义
+  - JWT 由三个部分组成：Header、Payload、Signature，并且用圆点连接：xxxxx.yyyyy.zzzzz
+  - Header：由两部分（Tocken 类型、加密算法名称）组成，并使用 Base64 编码
+  ```json
+  {
+    "alg": "HSA256", // 签名的算法
+    "typ": "JWT"  // 令牌的类型
+  }
+  ```
+  - Payload：K-V 形式的数据，即想要传递的数据（授权的话就是 Tocken 信息），也需要 Base64 编码
+  - Signature：未来得到签名部分，必须有编码过的 Header、编码过的 payload、一个密钥，签名算法是 Header 中指定的那个，然后对它们签名即可
+  ```java
+    HMACSHA256(base64UrlEncode(header) + "." + base64UrlEncode(payload), secret)
+  ```
+  ![](./illustration/jwt-token.png)
+
+  ### 对比基于 Token 与基于服务器的身份认证
+
+  #### 基于服务器的认证
+
+  - 最为传统的做法，客户端存储 Cookie（一般是 Session id）, 服务器存储 Session
+  - Session 是每次用户认证通过以后，服务器需要创建一条记录保存用户信息，通常是在内存中，随着认证通过的用户越来越多，服务器在这里的开销就会越来越大
+  - 在不同域名之前切换的时候，请求可能会被禁止；也就是跨域问题
+  ![](./illustration/jwt-vs-service.png)
+
+  #### 基于 Token 的认证
+  - JWT 与 Session 的差异相同点是，它们都是存储用户信息；然而，Session 是在服务器端的，而 JWT 是在客户端的
+  - JWT 方式将用户状态分散到了客户端中，明显减轻服务端的内存压力
+  - ![](./illustration/jwt-token.png)
+
+  #### 两者优缺点对比：
+  - 解析方法：JWT 使用算法直接解析得到用户信息；Session 需要额外的数据映射，实现匹配
+  - 管理方法：JWT 只有过期时间的限制；Session 数据保存在服务器，可控性更强；
+  - 跨平台：JWT 就是一段字符串，可以任意传播；Session 跨平台需要有统一的解析平台，较为繁琐
+  - 时效性：JWT 一旦生成，独立存在，很难做特殊控制；Session 的时效性完全由服务端的逻辑说了算
+  - 两者都有优缺点，都是登录、授权的解决方案
