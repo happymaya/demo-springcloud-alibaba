@@ -9,6 +9,7 @@
         <module name="imaya-mall-alibaba-nacos-client" />
         <module name="imaya-mall-admin" />
         <module name="imaya-mall-mvc-config" />
+        <module name="imaya-mall-authority-center" />
         <module name="imaya-mall-common" />
       </profile>
     </annotationProcessing>
@@ -17,6 +18,7 @@
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="imaya-mall-admin" options="-parameters" />
       <module name="imaya-mall-alibaba-nacos-client" options="-parameters" />
+      <module name="imaya-mall-authority-center" options="-parameters" />
       <module name="imaya-mall-common" options="-parameters" />
       <module name="imaya-mall-mvc-config" options="-parameters" />
     </option>

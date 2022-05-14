@@ -15,6 +15,7 @@ spring:
       discovery:
         enabled: true
         server-addr: 192.168.37.102:8848
+#        server-addr: 192.168.37.102:8848,192.168.37.103:8858,192.168.37.104:8868 # Nacos 服务器地址
         namespace: 81bdcd1d-3a6f-4f19-a7e3-069434b1ebce
         metadata:
           management:
